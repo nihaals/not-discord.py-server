@@ -1,0 +1,11 @@
+{
+	"User in whitelist": {
+		"scope": "yaml",
+		"prefix": "u",
+		"body": [
+			"  - id: $1",
+			"    name: $2",
+			"$0"
+		]
+	}
+}
