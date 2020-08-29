@@ -1,5 +1,6 @@
-import yaml
 from pathlib import Path
+
+import yaml
 
 
 # See https://stackoverflow.com/a/39681672/7621784
