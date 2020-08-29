@@ -4,7 +4,13 @@
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>NDPS</title>
-    <script src="https://hcaptcha.com/1/api.js" async defer></script>
+
+    <script>
+      function hCaptchaOnLoad() {
+        document.querySelector("#loading").remove();
+      }
+    </script>
+    <script src="https://hcaptcha.com/1/api.js?onload=hCaptchaOnLoad" async defer></script>
   </head>
   <body>
     <script>
@@ -13,7 +19,8 @@
         document.querySelector("#form").submit();
       }
     </script>
-    <form id="form" action="#" method="POST">
+    <p id="loading">Loading hCaptcha...</p>
+    <form id="form" action="" method="POST">
       <div class="h-captcha" data-sitekey="{{ hcaptcha_site_key }}" data-callback="hCaptchaCallback"></div>
     </form>
   </body>

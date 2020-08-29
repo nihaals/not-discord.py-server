@@ -43,10 +43,25 @@ DISCORD_CLIENT_SECRET = _config.get_value('discord_client_secret')
 DISCORD_BOT_TOKEN = _config.get_value('discord_bot_token')
 DISCORD_SERVER_ID = _config.get_value('discord_server_id')
 DISCORD_ROLE_ID = _config.get_value('discord_role_id')
-HCAPTCHA_SECRET_KEY = _config.get_value('hcaptcha_secret_key')
-HCAPTCHA_SITE_KEY = _config.get_value('hcaptcha_site_key')
 FLASK_SECRET_KEY = _config.get_value('flask_secret_key')
 
+HCAPTCHA_SECRET_KEY = _config.get_value('hcaptcha_secret_key')
+HCAPTCHA_SITE_KEY = _config.get_value('hcaptcha_site_key')
+HCAPTCHA_HOSTNAME = _config.get_value('hcaptcha_hostname')
+_testing_captcha = _config.get_value('testing_captcha')
+
+if _testing_captcha.lower() in ('true', 't', 'yes', 'y', '1'):
+    HCAPTCHA_SECRET_KEY = '0x0000000000000000000000000000000000000000'
+    HCAPTCHA_SITE_KEY = '10000000-ffff-ffff-ffff-000000000001'
+    HCAPTCHA_HOSTNAME = 'dummy-key-pass'
+elif _testing_captcha.lower() in ('false', 'f', 'no', 'n', '0'):
+    pass
+else:
+    raise ValueError()
+
+
+STATE_TIMEOUT = int(_config.get_value('state_timeout'))
+CODE_TIMEOUT = int(_config.get_value('code_timeout'))
 
 def user_is_in_whitelist(user_id: str) -> bool:
     for whitelisted_user_id in _config.get_whitelist():
