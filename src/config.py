@@ -38,12 +38,25 @@ class _Config:
 
 _config = _Config()
 
+
+def user_is_in_whitelist(user_id: str) -> bool:
+    for whitelisted_user_id in _config.get_whitelist():
+        if whitelisted_user_id == user_id:
+            return True
+    return False
+
+
 DISCORD_CLIENT_ID = _config.get_value('discord_client_id')
 DISCORD_CLIENT_SECRET = _config.get_value('discord_client_secret')
 DISCORD_BOT_TOKEN = _config.get_value('discord_bot_token')
 DISCORD_SERVER_ID = _config.get_value('discord_server_id')
 DISCORD_ROLE_ID = _config.get_value('discord_role_id')
 FLASK_SECRET_KEY = _config.get_value('flask_secret_key')
+
+DISCORD_WEBHOOK_URL = _config.get_value('discord_webhook_url')
+
+STATE_TIMEOUT = int(_config.get_value('state_timeout'))
+CODE_TIMEOUT = int(_config.get_value('code_timeout'))
 
 HCAPTCHA_SECRET_KEY = _config.get_value('hcaptcha_secret_key')
 HCAPTCHA_SITE_KEY = _config.get_value('hcaptcha_site_key')
@@ -58,13 +71,3 @@ elif _testing_captcha.lower() in ('false', 'f', 'no', 'n', '0'):
     pass
 else:
     raise ValueError()
-
-
-STATE_TIMEOUT = int(_config.get_value('state_timeout'))
-CODE_TIMEOUT = int(_config.get_value('code_timeout'))
-
-def user_is_in_whitelist(user_id: str) -> bool:
-    for whitelisted_user_id in _config.get_whitelist():
-        if whitelisted_user_id == user_id:
-            return True
-    return False

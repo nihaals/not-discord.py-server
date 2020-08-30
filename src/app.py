@@ -1,5 +1,7 @@
 import time
+from typing import List, Optional
 
+import discord
 import requests
 import requests_oauthlib
 from flask import Flask, redirect, render_template, request, session, url_for
@@ -11,6 +13,11 @@ app = Flask(__name__)
 app.config.update(
     SECRET_KEY=config.FLASK_SECRET_KEY,
     SESSION_COOKIE_SECURE=True,
+)
+
+DISCORD_WEBHOOK = discord.Webhook.from_url(
+    config.DISCORD_WEBHOOK_URL,
+    adapter=discord.RequestsWebhookAdapter(requests.Session()),
 )
 
 DISCORD_BASE_URL = 'https://discord.com/api/v6'
@@ -44,12 +51,65 @@ def verify_hcaptcha(response: str) -> bool:
     return r['success']
 
 
-def get_user_id(access_token: str) -> str:
+class DiscordUser:
+    def __init__(
+        self,
+        id_: str,
+        username: str,
+        discriminator: str,
+        avatar: Optional[str],
+        mfa_enabled: Optional[bool],
+    ) -> None:
+        self.id = id_
+        self.username = username
+        self.discriminator = discriminator
+        self._avatar = avatar
+        self.mfa_enabled = mfa_enabled
+
+    def __str__(self) -> str:
+        return f'{self.username}#{self.discriminator}'
+
+    @classmethod
+    def from_dict(cls, data: dict):
+        if 'mfa_enabled' not in data:
+            send_webhook('MFA Enabled not available\n' + repr(data))
+        return cls(
+            data['id'],
+            data['username'],
+            data['discriminator'],
+            data['avatar'],
+            data.get('mfa_enabled'),
+        )
+
+    @property
+    def avatar_url(self) -> str:
+        if self._avatar is None:
+            return f'https://cdn.discordapp.com/embed/avatars/{self.discriminator % 5}.png'
+        if self._avatar.startswith('a_'):
+            ext = 'gif'
+        else:
+            ext = 'png'
+        return f'https://cdn.discordapp.com/avatars/{self.id}/{self._avatar}.{ext}'
+
+    def as_embed(self, *, title: str = None, description: str = None) -> discord.Embed:
+        embed = discord.Embed()
+        if title is not None:
+            embed.title = title
+        if description is not None:
+            embed.description = description
+        embed.set_author(name=str(self), icon_url=self.avatar_url)
+        embed.add_field(name='User ID', value=self.id)
+        embed.add_field(name='Avatar URL', value=self.avatar_url)
+        created_at = discord.utils.snowflake_time(int(self.id)).strftime('%A %d %B %Y at %H:%M:%S UTC')
+        embed.add_field(name='Created at', value=created_at)
+        return embed
+
+
+def get_user(access_token: str) -> DiscordUser:
     response = requests.get(f'{DISCORD_BASE_URL}/users/@me', headers={'Authorization': f'Bearer {access_token}'})
     if response.status_code == 200:
         response = response.json()
-        if user_id := response.get('id'):
-            return user_id
+        return DiscordUser.from_dict(response)
     raise ValueError()
 
 
@@ -97,6 +157,27 @@ def check_captcha():
 
 def if_timed_out(previous_time: int, timeout: int) -> bool:
     return previous_time + timeout <= time.time()
+
+
+def send_webhook(
+    content: str = None,
+    *,
+    username: str = None,
+    avatar_url: str = None,
+    embed: discord.Embed = None,
+    embeds: List[discord.Embed] = None,
+    allowed_mentions: discord.AllowedMentions = None,
+):
+    if allowed_mentions is None:
+        allowed_mentions = discord.AllowedMentions(everyone=False, users=False, roles=False)
+    DISCORD_WEBHOOK.send(
+        content=content,
+        username=username,
+        avatar_url=avatar_url,
+        embed=embed,
+        embeds=embeds,
+        allowed_mentions=allowed_mentions,
+    )
 
 
 @app.route('/', methods=['GET', 'POST'])
@@ -165,22 +246,31 @@ def discord_callback():
     except (MismatchingStateError, InvalidClientIdError):
         return redirect_message_page('Invalid request, please try again', 400)
     access_token = token['access_token']
-    user_id = get_user_id(access_token)
-    if config.user_is_in_whitelist(user_id) is False:
+    user = get_user(access_token)
+    if config.user_is_in_whitelist(user.id) is False:
+        send_webhook(embed=user.as_embed(title='User not in whitelist'))
         return redirect_message_page('Unauthorized', 401)
-    response = add_to_guild(access_token, user_id)
+    if user.mfa_enabled is False:
+        send_webhook(embed=user.as_embed(title='User not using MFA'))
+        return redirect_message_page('You are not using multi-factor authentication', 400)
+    response = add_to_guild(access_token, user.id)
     revoke_token(access_token)
     status_code = response.status_code
     if status_code == 201:
+        send_webhook(embed=user.as_embed(title='User added'))
         return redirect_message_page('You have been added')
     if status_code == 204:
+        send_webhook(embed=user.as_embed(title='User already in server'))
         return redirect_message_page('You are already in the server', 400)
     if status_code == 403:
+        send_webhook('add_to_guild received a 403')
         return redirect_message_page('Bot does not have correct permissions', 500)
     if status_code == 400:
         if response.json()['code'] == 30001:
+            send_webhook(embed=user.as_embed(title='User on 100 guilds'))
             return redirect_message_page('You are on 100 servers', 400)
     print(status_code, response.text)
+    send_webhook(f'{status_code}\n{response.text}')
     return redirect_message_page('Unknown error', 500)
 
 
