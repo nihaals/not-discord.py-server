@@ -278,7 +278,7 @@ def discord_callback():
             send_webhook(embed=user.as_embed(title='User on 100 guilds'))
             return redirect_message_page('You are on 100 servers', 400)
     print(status_code, response.text)
-    send_webhook(f'{status_code}\n{response.text}')
+    send_webhook(f'{status_code}\n{response.text}', embed=user.as_embed(title='Unknown error'))
     return redirect_message_page('Unknown error', 500)
 
 
