@@ -91,6 +91,10 @@ class DiscordUser:
             ext = 'png'
         return f'https://cdn.discordapp.com/avatars/{self.id}/{self._avatar}.{ext}'
 
+    @property
+    def mention(self) -> str:
+        return f'<@{self.id}>'
+
     def as_embed(self, *, title: str = None, description: str = None) -> discord.Embed:
         embed = discord.Embed()
         if title is not None:
@@ -99,6 +103,7 @@ class DiscordUser:
             embed.description = description
         embed.set_author(name=str(self), icon_url=self.avatar_url)
         embed.add_field(name='User ID', value=self.id)
+        embed.add_field(name='Mention', value=self.mention)
         embed.add_field(name='Avatar URL', value=self.avatar_url)
         created_at = discord.utils.snowflake_time(int(self.id)).strftime('%A %d %B %Y at %H:%M:%S UTC')
         embed.add_field(name='Created at', value=created_at)
