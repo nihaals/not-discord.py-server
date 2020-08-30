@@ -215,6 +215,7 @@ def discord_callback():
     if request.method == 'GET':
         if session.get('url') and (incoming_time := session.get('code_time')):
             if if_timed_out(incoming_time, config.CODE_TIMEOUT) is True:
+                send_webhook('Timeout on first GET callback')
                 return redirect_message_page('Timeout, please try again', 400)
             return show_captcha()
         if request.args.get('error') is not None:
@@ -225,6 +226,7 @@ def discord_callback():
         if not (incoming_time := session.pop('state_time', None)):
             return redirect_message_page('Invalid request, please try again', 400)
         if if_timed_out(incoming_time, config.STATE_TIMEOUT) is True:
+            send_webhook('Timeout on Discord redirect to callback')
             return redirect_message_page('Timeout, please try again', 400)
         session['url'] = request.url.replace('http://', 'https://')
         session['code_time'] = time.time()
@@ -238,6 +240,7 @@ def discord_callback():
     if not (incoming_time := session.pop('code_time', None)):
         return redirect_message_page('Invalid request, please try again', 400)
     if if_timed_out(incoming_time, config.CODE_TIMEOUT) is True:
+        send_webhook('Timeout after completing callback CAPTCHA')
         return redirect_message_page('Timeout, please try again', 400)
     if not (callback_url := session.pop('url', None)):
         return redirect_message_page('Invalid request, please try again', 400)
