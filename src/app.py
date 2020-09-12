@@ -148,8 +148,10 @@ def redirect_message_page(message: str, status_code: int = 200):
     return redirect(url_for('root'))
 
 
-def show_captcha():
-    return render_template('captcha.html', hcaptcha_site_key=config.HCAPTCHA_SITE_KEY)
+def show_captcha(captcha_number: int):
+    return render_template(
+        'captcha.html', hcaptcha_site_key=config.HCAPTCHA_SITE_KEY, captcha_number=str(captcha_number),
+    )
 
 
 def check_captcha():
@@ -199,7 +201,7 @@ def root():
             status_code := session.pop('status_code', None)
         ) is not None:
             return message, status_code
-        return show_captcha()
+        return show_captcha(1)
     # POST with CAPTCHA response
     if (captcha_response := check_captcha()) is not None:
         return captcha_response
@@ -217,7 +219,7 @@ def discord_callback():
             if if_timed_out(incoming_time, config.CODE_TIMEOUT) is True:
                 send_webhook('Timeout on first GET callback')
                 return redirect_message_page('Timeout, please try again', 400)
-            return show_captcha()
+            return show_captcha(2)
         if request.args.get('error') is not None:
             session.pop('state', None)
             return redirect_message_page('Discord OAuth Error, please try again', 400)
